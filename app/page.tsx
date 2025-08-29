@@ -1,103 +1,188 @@
-import Image from "next/image";
+"use client"
 
-export default function Home() {
+import { useState, useEffect, useRef } from "react"
+import { Textarea } from "@/components/ui/textarea"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+
+export default function Page() {
+  const [referenceText, setReferenceText] = useState(
+    "The quick brown fox jumps over the lazy dog. This pangram contains every letter of the alphabet and is commonly used for typing practice.",
+  )
+  const [text, setText] = useState("")
+  const [charactersPerMinute, setCharactersPerMinute] = useState(0)
+  const [accuracy, setAccuracy] = useState(100)
+  const [correctChars, setCorrectChars] = useState(0)
+  const [isTyping, setIsTyping] = useState(false)
+  const startTimeRef = useRef<number | null>(null)
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (text.length === 0) {
+      setCharactersPerMinute(0)
+      setAccuracy(100)
+      setCorrectChars(0)
+      setIsTyping(false)
+      startTimeRef.current = null
+      return
+    }
+
+    // Start timing on first character
+    if (!startTimeRef.current) {
+      startTimeRef.current = Date.now()
+    }
+
+    setIsTyping(true)
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+
+    // Set timeout to stop counting after 2 seconds of no typing
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false)
+    }, 2000)
+
+    let correct = 0
+    for (let i = 0; i < text.length; i++) {
+      if (i < referenceText.length && text[i] === referenceText[i]) {
+        correct++
+      }
+    }
+    setCorrectChars(correct)
+    const accuracyPercent = text.length > 0 ? Math.round((correct / text.length) * 100) : 100
+    setAccuracy(accuracyPercent)
+
+    // Calculate CPM
+    const currentTime = Date.now()
+    const timeElapsed = (currentTime - startTimeRef.current) / 1000 / 60 // Convert to minutes
+    const cpm = timeElapsed > 0 ? Math.round(text.length / timeElapsed) : 0
+    setCharactersPerMinute(cpm)
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+    }
+  }, [text, referenceText])
+
+  const handleTextChange = (value: string) => {
+    setText(value)
+  }
+
+  const resetCounter = () => {
+    setText("")
+    setCharactersPerMinute(0)
+    setAccuracy(100)
+    setCorrectChars(0)
+    setIsTyping(false)
+    startTimeRef.current = null
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current)
+    }
+  }
+
+  const renderTextWithHighlighting = () => {
+    return referenceText.split("").map((char, index) => {
+      let className = "text-muted-foreground"
+
+      if (index < text.length) {
+        className = text[index] === char ? "text-green-600 bg-green-100" : "text-red-600 bg-red-100"
+      } else if (index === text.length) {
+        className = "text-foreground bg-blue-100 border-l-2 border-blue-500"
+      }
+
+      return (
+        <span key={index} className={className}>
+          {char}
+        </span>
+      )
+    })
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen bg-background p-4 flex items-center justify-center">
+      <div className="w-full max-w-2xl space-y-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-foreground">Typing Speed & Accuracy Test</h1>
+          <p className="text-muted-foreground">Type the text below to measure your speed and accuracy</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div>
+          <div className="pb-4">
+            <div>Reference Text</div>
+          </div>
+          <div>
+            <div className="p-4 bg-muted rounded-lg font-mono text-sm leading-relaxed">
+              {renderTextWithHighlighting()}
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div className="pb-4">
+            <div className="flex items-center justify-between">
+              <span>Type Here</span>
+              <div className="flex items-center gap-2">
+                <Badge variant={isTyping ? "default" : "secondary"}>{isTyping ? "Typing..." : "Idle"}</Badge>
+                <Button onClick={resetCounter} variant="outline" size="sm">
+                  Reset
+                </Button>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <Textarea
+              value={text}
+              onChange={(e) => handleTextChange(e.target.value)}
+              placeholder="Start typing the reference text above..."
+              className="min-h-32 resize-none text-base leading-relaxed font-mono"
+              autoFocus
+            />
+
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>
+                Characters: {text.length} / {referenceText.length}
+              </span>
+              <span>Progress: {Math.round((text.length / referenceText.length) * 100)}%</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <div className="pt-6">
+              <div className="text-center space-y-2">
+                <div className="text-3xl font-bold text-primary">{charactersPerMinute}</div>
+                <div className="text-sm text-muted-foreground">Characters/min</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="pt-6">
+              <div className="text-center space-y-2">
+                <div
+                  className={`text-3xl font-bold ${accuracy >= 95 ? "text-green-600" : accuracy >= 80 ? "text-yellow-600" : "text-red-600"}`}
+                >
+                  {accuracy}%
+                </div>
+                <div className="text-sm text-muted-foreground">Accuracy</div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="pt-6">
+              <div className="text-center space-y-2">
+                <div className="text-3xl font-bold text-blue-600">{correctChars}</div>
+                <div className="text-sm text-muted-foreground">Correct chars</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
